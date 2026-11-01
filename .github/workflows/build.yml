@@ -15,7 +15,13 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.7
-      - run: gradle assembleDebug --no-daemon
+      - name: Build
+        run: |
+          gradle assembleDebug --no-daemon --console=plain > build.log 2>&1 || {
+            echo "===== ERORI ====="
+            grep -E "^e: " build.log
+            exit 1
+          }
       - uses: actions/upload-artifact@v4
         with:
           name: SkioLite-apk
