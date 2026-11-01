@@ -22,7 +22,7 @@ class MainActivity : Activity() {
 
     private lateinit var web: WebView
     private lateinit var bar: EditText
-    private lateinit var progress: ProgressBar
+    private lateinit var progressBar: ProgressBar
     private var imagesOn = false
 
     private val paper = Color.parseColor("#F4EBD0")
@@ -50,111 +50,122 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(paper)
+        val root = LinearLayout(this)
+        root.orientation = LinearLayout.VERTICAL
+        root.setBackgroundColor(paper)
+
+        // Rândul 1: Înapoi | adresă | GO
+        val row1 = LinearLayout(this)
+        row1.orientation = LinearLayout.HORIZONTAL
+        row1.gravity = Gravity.CENTER_VERTICAL
+        row1.setPadding(8, 8, 8, 4)
+
+        val backBtn = Button(this)
+        backBtn.text = "<"
+        backBtn.typeface = Typeface.MONOSPACE
+        backBtn.setOnClickListener { if (web.canGoBack()) web.goBack() }
+
+        bar = EditText(this)
+        bar.hint = "adresă sau căutare"
+        bar.typeface = Typeface.MONOSPACE
+        bar.setTextColor(ink)
+        bar.setHintTextColor(Color.GRAY)
+        bar.setSingleLine()
+        bar.imeOptions = EditorInfo.IME_ACTION_GO
+        bar.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        bar.setOnEditorActionListener { _, _, _ ->
+            go(bar.text.toString())
+            true
         }
 
-        val row1 = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(8, 8, 8, 4)
-        }
-        val back = Button(this).apply {
-            text = "<"
-            typeface = Typeface.MONOSPACE
-            setOnClickListener { if (web.canGoBack()) web.goBack() }
-        }
-        bar = EditText(this).apply {
-            hint = "adresă sau căutare"
-            typeface = Typeface.MONOSPACE
-            setTextColor(ink)
-            setHintTextColor(Color.GRAY)
-            setSingleLine()
-            imeOptions = EditorInfo.IME_ACTION_GO
-            layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
-            setOnEditorActionListener { _, _, _ -> go(text.toString()); true }
-        }
-        val goBtn = Button(this).apply {
-            text = "GO"
-            typeface = Typeface.MONOSPACE
-            setOnClickListener { go(bar.text.toString()) }
-        }
-        row1.addView(back)
+        val goBtn = Button(this)
+        goBtn.text = "GO"
+        goBtn.typeface = Typeface.MONOSPACE
+        goBtn.setOnClickListener { go(bar.text.toString()) }
+
+        row1.addView(backBtn)
         row1.addView(bar)
         row1.addView(goBtn)
 
-        val row2 = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(8, 0, 8, 4)
+        // Rândul 2: IMG | JS | Acasă
+        val row2 = LinearLayout(this)
+        row2.orientation = LinearLayout.HORIZONTAL
+        row2.gravity = Gravity.CENTER_VERTICAL
+        row2.setPadding(8, 0, 8, 4)
+
+        val imgBtn = Button(this)
+        imgBtn.text = "IMG: OFF"
+        imgBtn.typeface = Typeface.MONOSPACE
+        imgBtn.setOnClickListener {
+            imagesOn = !imagesOn
+            web.settings.blockNetworkImages = !imagesOn
+            imgBtn.text = if (imagesOn) "IMG: ON" else "IMG: OFF"
+            web.reload()
         }
-        val imgBtn = Button(this).apply {
-            text = "IMG: OFF"
-            typeface = Typeface.MONOSPACE
-            setOnClickListener {
-                imagesOn = !imagesOn
-                web.settings.blockNetworkImages = !imagesOn
-                text = if (imagesOn) "IMG: ON" else "IMG: OFF"
-                web.reload()
-            }
+
+        val jsBox = CheckBox(this)
+        jsBox.text = "JS"
+        jsBox.typeface = Typeface.MONOSPACE
+        jsBox.setTextColor(ink)
+        jsBox.isChecked = false
+        jsBox.setOnCheckedChangeListener { _, on ->
+            web.settings.javaScriptEnabled = on
+            web.reload()
         }
-        val jsBox = CheckBox(this).apply {
-            text = "JS"
-            typeface = Typeface.MONOSPACE
-            setTextColor(ink)
-            isChecked = false
-            setOnCheckedChangeListener { _, on ->
-                web.settings.javaScriptEnabled = on
-                web.reload()
-            }
-        }
-        val homeBtn = Button(this).apply {
-            text = "Acasă"
-            typeface = Typeface.MONOSPACE
-            setOnClickListener { loadHome() }
-        }
+
+        val homeBtn = Button(this)
+        homeBtn.text = "Acasă"
+        homeBtn.typeface = Typeface.MONOSPACE
+        homeBtn.setOnClickListener { loadHome() }
+
         row2.addView(imgBtn)
         row2.addView(jsBox)
         row2.addView(homeBtn)
 
-        progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
-            max = 100
-            progressTintList = android.content.res.ColorStateList.valueOf(accent)
-            layoutParams = LinearLayout.LayoutParams(-1, 8)
+        // Bara de progres
+        progressBar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal)
+        progressBar.max = 100
+        progressBar.progressTintList = android.content.res.ColorStateList.valueOf(accent)
+        progressBar.layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, 8
+        )
+
+        // WebView
+        web = WebView(this)
+        web.layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
+        )
+
+        val s = web.settings
+        s.javaScriptEnabled = false
+        s.blockNetworkImages = true
+        s.cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
+        s.setSupportZoom(true)
+        s.builtInZoomControls = true
+        s.displayZoomControls = false
+        s.useWideViewPort = true
+        s.loadWithOverviewMode = true
+        s.mediaPlaybackRequiresUserGesture = true
+
+        web.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView, url: String) {
+                if (!url.startsWith("data:") && !url.startsWith("https://skio.lite")) {
+                    bar.setText(url)
+                }
+            }
         }
 
-        web = WebView(this).apply {
-            layoutParams = LinearLayout.LayoutParams(-1, 0, 1f)
-            settings.apply {
-                javaScriptEnabled = false
-                blockNetworkImages = true
-                cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
-                loadsImagesAutomatically = true
-                setSupportZoom(true)
-                builtInZoomControls = true
-                displayZoomControls = false
-                useWideViewPort = true
-                loadWithOverviewMode = true
-                mediaPlaybackRequiresUserGesture = true
-            }
-            webViewClient = object : WebViewClient() {
-                override fun onPageFinished(view: WebView, url: String) {
-                    if (!url.startsWith("data:") && !url.startsWith("https://skio.lite")) {
-                        bar.setText(url)
-                    }
-                }
-            }
-            webChromeClient = object : WebChromeClient() {
-                override fun onProgressChanged(view: WebView, p: Int) {
-                    progress.progress = p
-                    progress.visibility = if (p in 1..99) View.VISIBLE else View.INVISIBLE
-                }
+        web.webChromeClient = object : WebChromeClient() {
+            override fun onProgressChanged(view: WebView, newProgress: Int) {
+                progressBar.progress = newProgress
+                progressBar.visibility =
+                    if (newProgress in 1..99) View.VISIBLE else View.INVISIBLE
             }
         }
 
         root.addView(row1)
         root.addView(row2)
-        root.addView(progress)
+        root.addView(progressBar)
         root.addView(web)
         setContentView(root)
 
